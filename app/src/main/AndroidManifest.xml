@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="de.unibonn.ineluki.vpnfirewall" >
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme" >
+        <activity
+            android:name=".startActivity"
+            android:label="@string/app_name" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".FirewallVpnService"
+            android:permission="android.permission.BIND_VPN_SERVICE" >
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".VPN2"
+            android:permission="android.permission.BIND_VPN_SERVICE" >
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
+        <activity
+            android:name=".SecondScreenActivity"
+            android:label="@string/app_name"
+            android:parentActivityName=".startActivity">
+
+        </activity>
+
+
+        <activity
+            android:name=".MyListActivity"
+            android:label="TestList">
+        </activity>
+
+        <activity
+            android:name=".DetailsActivity"
+            android:label="DetailsActivity">
+        </activity>
+
+        <activity
+            android:name=".ConnectionStats"
+            android:label="ConnectionStats">
+        </activity>
+
+
+        <activity
+            android:name=".RulesActivity"
+            android:label="RulesActivity">
+        </activity>
+
+
+        <activity
+            android:name=".ConnectionListActivity"
+            android:label="ConnectionListActivity">
+        </activity>
+
+
+    </application>
+
+</manifest>
