@@ -12,6 +12,7 @@ import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -166,33 +167,82 @@ public class VPN2 extends VpnService implements Handler.Callback, Runnable {
                     //debugPacket(packet2);
                     //serverIP = pdata.destAddr//getDestinationIP(packet);
                     port = pdata.destPort; //getDestinationPort(packet, getHeaderLength(packet));
-                    socketadd = new InetSocketAddress(pdata.destAddr, port);
-                    DatagramSocket s = new DatagramSocket();
 
-                    byte[] data= new byte[pdata.data.capacity()];
-                    pdata.data.get(data);
+                    Log.d(TAG, "prot:"+pdata.prot);
+                    if(pdata.prot==17) {
+                        Log.d(TAG, "udp");
+                        //socketadd = new InetSocketAddress(pdata.destAddr, port);
+                        DatagramSocket s = new DatagramSocket();
 
-                    if(shouldBeBlocked(pdata.destAddr))
-                    {
-                        sendResult("blocked: "+ pdata.destAddr.toString()+":"+pdata.destPort);
-                    }else{
-                        sendResult(pdata.destAddr.toString()+":"+pdata.destPort);
-                        if (protect(s)){
-                            DatagramPacket p = new DatagramPacket(data, data.length, pdata.destAddr, port);
-                            Log.d("SendOutTest","try sending");
-                            try {
-                                s.send(p);
-                                Log.d("SendOutTest","send out!");
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                            Log.d("SendOutTest", "message:");
+                        byte[] data= new byte[pdata.data.capacity()];
+                        pdata.data.get(data);
 
+                        if(shouldBeBlocked(pdata.destAddr))
+                        {
+                            sendResult("blocked: "+ pdata.destAddr.toString()+":"+pdata.destPort);
                         }else{
-                            Log.d("SendOutTest", "protection of socket failed!");
+                            sendResult(pdata.destAddr.toString()+":"+pdata.destPort);
+                            if (protect(s)){
+                                DatagramPacket p = new DatagramPacket(data, data.length, pdata.destAddr, port);
+                                Log.d("SendOutTest","try sending");
+                                try {
+                                    s.send(p);
+                                    Log.d("SendOutTest","send out!");
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                                Log.d("SendOutTest", "message:");
+
+                            }else{
+                                Log.d("SendOutTest", "protection of socket failed!");
+                            }
+                        }
+                    }
+
+                    if(pdata.prot==6) {
+                        Log.d(TAG, "tcp");
+
+                        byte[] data= new byte[pdata.data.capacity()];
+                        pdata.data.get(data);
+
+
+                        Socket s = new Socket(pdata.destAddr,pdata.destPort);
+
+                        if(shouldBeBlocked(pdata.destAddr))
+                        {
+                            sendResult("blocked: "+ pdata.destAddr.toString()+":"+pdata.destPort);
+                        }else{
+                            sendResult(pdata.destAddr.toString()+":"+pdata.destPort);
+                            if (protect(s)){
+
+                                Log.d(TAG, "try sending");
+                                try {
+                                    OutputStream outStream = s.getOutputStream();
+                                    DataOutputStream dos = new DataOutputStream(out);
+
+                                    int dataLength = data.length;
+                                    dos.writeInt(dataLength);
+                                    if (dataLength > 0) {
+                                        dos.write(data, 0, dataLength);
+                                    }
+
+                                    Log.d(TAG, "send out!");
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                                Log.d(TAG, "message:");
+
+                            }else{
+                                Log.d(TAG, "protection of socket failed!");
+                            }
                         }
 
+
                     }
+
+                    if(pdata.prot==1) Log.d(TAG,"ICMP");
+
+
                     packet.clear();
                 }
                 /*
@@ -230,14 +280,14 @@ public class VPN2 extends VpnService implements Handler.Callback, Runnable {
         Builder builder = new Builder();
         builder.setMtu(1500);
         builder.addAddress("192.168.178.90", 24);
-        //builder.addAddress("10.0.2.0", 24);
+        //builder.addAddress("10.0.2.0", 32);
+        //builder.addDnsServer("8.8.8.8");
         builder.addRoute("0.0.0.0", 0);  // to intercept packets
         try {
             mInterface.close();
         } catch (Exception e) {
             // ignore
         }
-
         mInterface = builder.establish();
     }
 
@@ -371,11 +421,28 @@ public class VPN2 extends VpnService implements Handler.Callback, Runnable {
         Log.d(TAG, "srcPort:"+srcPort);
         Log.d(TAG, "destPort:"+destPort);
 
+        Log.d(TAG, "prot:"+prot);
+
         byte[] header = new byte[headerLength+8];
         byte[] data =  new byte[dupl.limit()-headerLength-8];
 
-        dupl2.get(header,0,headerLength+8);
-        dupl2.get(data,0,dupl.limit()-headerLength-8);
+        if(prot==17){
+            header = new byte[headerLength+8];
+            data =  new byte[dupl.limit()-headerLength-8];
+            dupl2.get(header,0,headerLength+8);
+            dupl2.get(data,0,dupl.limit()-headerLength-8);
+        }
+
+        if(prot==6){
+            int dataOffset = ((dupl2.get(headerLength+12))& 0xFF)>>>4;
+            Log.d(TAG, "dataOffset " + dataOffset  + ":" + String.format("%02x.", dupl2.get(headerLength+12) & 0xFF));
+            Log.d(TAG, "dupl2 limit " + dupl2.limit());
+            Log.d(TAG, "dupl2 capa " + dupl2.capacity());
+            header = new byte[headerLength+dataOffset];
+            data =  new byte[dupl.limit()-headerLength-dataOffset];
+            dupl2.get(header,0,headerLength+dataOffset);
+            dupl2.get(data,0,dupl.limit()-headerLength-dataOffset);
+        }
 
 
         byte buff;
