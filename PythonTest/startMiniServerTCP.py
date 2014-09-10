@@ -8,19 +8,20 @@ from thread import *
 #Function for handling connections
 def clientthread(conn):
     #Sending message to connected client
-    conn.send(b'Welcome to the server....\n') #send only takes string
+    #conn.send(b'Welcome to the server....\n') #send only takes string
 
     #infinite loop so that function do not terminate and thread do not end.
     while True:
 
         #Receiving from client
         data = conn.recv(1024)
-        reply = (b'Message Received at the server!\n')
+        reply = (b'Message Received at the server:!' + data)
         print(data)
         if not data:
             break
 
-        conn.sendall(reply)
+        conn.send(reply)
+        #conn.sendall(reply)
 
     conn.close()
 
@@ -43,6 +44,7 @@ def startMiniServerTCP(port=8888, HOST=''):
         #wait to accept a connection
         conn, addr = s.accept()
         print('Connected with ' + addr[0] + ':' + str(addr[1]))
-       clientthread(conn)
+        clientthread(conn)
 
     s.close()
+
